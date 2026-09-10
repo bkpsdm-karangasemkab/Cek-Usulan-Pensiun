@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Pencarian Usulan Pensiun</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif; 
+            background-color: #ffffff;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Custom Scrollbar for code block */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <nav class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="bg-green-600 text-white w-10 h-10 rounded-lg flex items-center justify-center shadow-md">
+                        <i class="fas fa-file-signature text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg leading-tight text-slate-800">Sistem Informasi Usulan Pensiun</h1>
+                        <p class="text-xs text-slate-500 font-medium">Informasi Penelusuran Dokumen</p>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <button onclick="toggleModal('guideModal')" class="text-sm font-medium text-green-600 hover:text-green-800 transition-colors flex items-center gap-2 bg-green-50 px-3 py-1.5 rounded-full hover:bg-green-100">
+                        <i class="fas fa-circle-question"></i> 
+                        <span class="hidden sm:inline">Petunjuk Penggunaan</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow flex flex-col items-center pt-10 pb-20 px-4 sm:px-6">
+        
+        <div class="w-full max-w-3xl text-center mb-8">
+            <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+                Lacak Status <span class="text-green-600 text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-teal-600">Usulan Pensiun</span>
+            </h2>
+            <p class="mt-3 text-lg text-slate-600 max-w-2xl mx-auto">
+                Masukkan Nomor Induk Pegawai (NIP) untuk melihat detail profil dan memantau progres dokumen usulan pensiun ASN.
+            </p>
+        </div>
+
+        <div class="w-full max-w-2xl mb-10 relative z-20">
+            <form id="searchForm" onsubmit="handleSearch(event)" class="relative flex items-center w-full h-16 rounded-full focus-within:shadow-xl bg-white overflow-hidden shadow-lg border border-slate-200 transition-shadow duration-300">
+                <div class="grid place-items-center h-full w-14 text-slate-400">
+                    <i class="fas fa-search text-lg"></i>
+                </div>
+                <input
+                    class="peer h-full w-full outline-none text-base text-slate-700 pr-4 bg-transparent font-medium"
+                    type="text"
+                    id="searchNip"
+                    placeholder="Ketik NIP di sini (Contoh: 198001012005011001)"
+                    autocomplete="off"
+                    maxlength="18"
+                /> 
+                <button type="submit" class="bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white font-bold py-2 px-8 h-full transition duration-300 ease-in-out flex items-center gap-2">
+                    Cari Data
+                </button>
+            </form>
+            
+            <!-- Quick Suggestion for Demo -->
+            <div class="mt-3 text-center text-sm text-slate-500">
+            </div>
+        </div>
+
+        <div class="w-full max-w-4xl min-h-[400px] relative">
+            
+            <!-- 1. State: Kosong / Belum input (Default) -->
+            <div id="state-empty" class="absolute inset-0 flex flex-col items-center justify-center bg-white rounded-3xl shadow-sm border border-slate-200 p-8 text-center transition-all duration-300">
+                <div class="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mb-6">
+                    <i class="fas fa-folder-open text-4xl text-green-300"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800 mb-2">Area Pencarian Kosong</h3>
+                <p class="text-slate-500 max-w-md">Data profil ASN akan muncul di sini. Silakan masukkan NIP pada kolom pencarian di atas untuk memulai pencarian.</p>
+            </div>
+
+            <!-- 2. State: Loading -->
+            <div id="state-loading" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm rounded-3xl z-10 p-8 text-center transition-all duration-300">
+                <div class="animate-spin rounded-full h-14 w-14 border-4 border-slate-200 border-t-green-600 mb-4"></div>
+                <p class="text-slate-600 font-medium animate-pulse">Menghubungkan ke Database Spreadsheet...</p>
+            </div>
+
+            <!-- 3. State: Data Tidak Ditemukan -->
+            <div id="state-notfound" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-white rounded-3xl shadow-sm border border-red-100 p-8 text-center transition-all duration-300">
+                <div class="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mb-6">
+                    <i class="fas fa-search-minus text-4xl text-red-400"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800 mb-2">Data Tidak Ditemukan</h3>
+                <p class="text-slate-500 max-w-md">Kami tidak dapat menemukan usulan pensiun dengan NIP <span id="nf-nip" class="font-bold text-slate-700"></span>. Pastikan NIP yang dimasukkan benar (18 digit).</p>
+                <button onclick="resetSearch()" class="mt-6 px-6 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition">Kembali</button>
+            </div>
+
+            <!-- 4. State: Hasil Pencarian (Profil PNS) -->
+            <div id="state-result" class="hidden w-full bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200 relative pb-8">
+                <!-- Header Background with Pattern -->
+                <div class="h-32 sm:h-40 bg-gradient-to-r from-green-700 to-teal-800 relative overflow-hidden">
+                    <!-- Decorative circles -->
+                    <div class="absolute -top-10 -right-10 w-40 h-40 bg-white opacity-10 rounded-full blur-2xl"></div>
+                    <div class="absolute top-10 right-20 w-20 h-20 bg-white opacity-10 rounded-full blur-xl"></div>
+                    
+                    <!-- Status Dokumen di Kanan Atas -->
+                    <div class="absolute top-4 right-4 sm:top-6 sm:right-8 z-20 flex flex-col items-end">
+                        <span class="text-white/80 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1.5 drop-shadow-sm">Status Dokumen</span>
+                        <div id="res-status-badge" class="px-4 py-1.5 sm:px-5 sm:py-2 inline-flex items-center gap-2 text-xs sm:text-sm font-bold rounded-xl shadow-lg border">
+                            <i class="fas fa-circle-check"></i> <span>STATUS</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profile Info Area -->
+                <div class="px-6 sm:px-10 relative">
+                    <!-- Avatar overlapping header (Hanya kotak foto yang menabrak strip biru) -->
+                    <div class="flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-6">
+                        <div class="w-28 h-28 sm:w-32 sm:h-32 bg-white rounded-2xl p-1.5 shadow-lg border border-slate-100 rotate-3 transform hover:rotate-0 transition-transform duration-300 -mt-14 sm:-mt-16 z-10 shrink-0">
+                            <div class="w-full h-full bg-gradient-to-br from-green-50 to-teal-100 rounded-xl flex items-center justify-center overflow-hidden relative">
+                                <span id="res-inisial" class="text-4xl sm:text-5xl font-extrabold text-green-600 tracking-tighter"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center sm:text-left pt-2 pb-2 flex-grow">
+                            <h2 id="res-nama" class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">Nama Lengkap</h2>
+                            <div class="flex flex-col sm:flex-row sm:items-center gap-2 mt-2">
+                                <p class="text-sm sm:text-base font-mono font-medium text-green-600 bg-green-50 px-3 py-1 rounded-md inline-block">
+                                    NIP. <span id="res-nip">1234567890</span>
+                                </p>
+                                <span id="res-jenis" class="inline-flex items-center px-3 py-1 rounded-md text-xs font-bold bg-teal-100 text-teal-800 border border-teal-200 w-max mx-auto sm:mx-0">
+                                    <i class="fas fa-tag mr-1"></i> JENIS PENSIUN
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Details Grid -->
+                    <div class="mt-8 bg-slate-50 rounded-2xl p-6 sm:p-8 border border-slate-100">
+                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-6 pb-2 border-b border-slate-200">
+                            <i class="fas fa-list-alt mr-2"></i> Detail Usulan & Jabatan
+                        </h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            
+                            <!-- KIRI: Pangkat, Jabatan, Unit Kerja -->
+                            <div class="flex flex-col gap-6">
+                                <div class="flex items-start gap-4">
+                                    <div class="w-10 h-10 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center text-slate-500 shrink-0">
+                                        <i class="fas fa-id-card-clip"></i>
+                                    </div>
+                                    <div>
+                                        <dt class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Pangkat / Golongan</dt>
+                                        <dd id="res-pangkat" class="mt-1 text-base text-slate-900 font-semibold">Data Pangkat</dd>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start gap-4">
+                                    <div class="w-10 h-10 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center text-slate-500 shrink-0">
+                                        <i class="fas fa-briefcase"></i>
+                                    </div>
+                                    <div>
+                                        <dt class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Jabatan</dt>
+                                        <dd id="res-jabatan" class="mt-1 text-base text-slate-900 font-semibold">Data Jabatan</dd>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start gap-4">
+                                    <div class="w-10 h-10 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center text-slate-500 shrink-0">
+                                        <i class="fas fa-building-user"></i>
+                                    </div>
+                                    <div>
+                                        <dt class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Tempat Tugas (Unit Kerja)</dt>
+                                        <dd id="res-unit" class="mt-1 text-base text-slate-900 font-semibold">Data Unit Kerja</dd>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- KANAN: Keterangan (Full ruang dikanan) -->
+                            <div class="flex flex-col h-full gap-6">
+                                <div class="flex items-start gap-4 flex-grow h-full">
+                                    <div class="w-10 h-10 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-500 shrink-0">
+                                        <i class="fas fa-comment-dots"></i>
+                                    </div>
+                                    <div class="w-full h-full flex flex-col">
+                                        <dt class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Keterangan / Catatan</dt>
+                                        <dd class="mt-2 text-sm text-slate-700 font-medium bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm leading-relaxed flex-grow" id="res-ket">
+                                            Data Keterangan
+                                        </dd>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="guideModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+            <div class="relative bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:max-w-4xl w-full border border-slate-200" onclick="event.stopPropagation()">
+                
+                <!-- Modal Header -->
+                <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                    <h3 class="text-lg leading-6 font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fas fa-book-open text-green-500"></i> Petunjuk Penggunaan
+                    </h3>
+                    <button onclick="toggleModal('guideModal')" class="text-slate-400 hover:text-red-500 transition-colors">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <!-- Modal Body -->
+                <div class="px-6 py-6 max-h-[70vh] overflow-y-auto">
+                    <div class="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg">
+                        <p class="text-sm text-green-800">
+                            Selamat datang di <strong>Sistem Informasi Usulan Pensiun</strong>. Ikuti langkah-langkah di bawah ini untuk melacak status dokumen Anda dengan mudah.
+                        </p>
+                    </div>
+                    
+                    <h4 class="font-bold text-slate-800 mb-4">Cara Mencari Data:</h4>
+                    <ol class="list-decimal list-inside text-sm text-slate-700 space-y-4 mb-6 ml-2">
+                        <li>
+                            <span class="font-semibold text-slate-900">Siapkan NIP:</span> 
+                            Pastikan Anda memiliki Nomor Induk Pegawai (NIP) ASN yang valid (biasanya terdiri dari 18 digit angka).
+                        </li>
+                        <li>
+                            <span class="font-semibold text-slate-900">Masukkan ke Kolom Pencarian:</span> 
+                            Ketik NIP tersebut ke dalam kolom pencarian yang tersedia di tengah halaman utama.
+                        </li>
+                        <li>
+                            <span class="font-semibold text-slate-900">Mulai Pencarian:</span> 
+                            Klik tombol <strong class="bg-gradient-to-r from-green-600 to-teal-600 text-white px-3 py-1 rounded-md text-xs font-normal">Cari Data</strong> atau tekan tombol <kbd class="bg-slate-100 border border-slate-300 px-1.5 py-0.5 rounded text-xs font-mono shadow-sm">Enter</kbd> pada keyboard Anda.
+                        </li>
+                        <li>
+                            <span class="font-semibold text-slate-900">Lihat Hasil:</span> 
+                            Jika NIP ditemukan, sistem akan menampilkan kartu profil PNS yang memuat detail identitas, jabatan, instansi, serta <strong>Status Dokumen</strong> usulan pensiun Anda saat ini.
+                        </li>
+                    </ol>
+
+                    <h4 class="font-bold text-slate-800 mb-3 mt-8 border-t border-slate-100 pt-6">Arti Warna Status Dokumen:</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-slate-700">
+                        <div class="flex items-start gap-3 bg-emerald-50/50 p-3 rounded-lg border border-emerald-100">
+                            <div class="mt-0.5 w-4 h-4 rounded-full bg-emerald-500 shadow-sm shrink-0"></div>
+                            <p><strong class="text-emerald-700 block mb-1">Selesai / Terbit</strong> Dokumen telah selesai diproses atau SK Pensiun sudah diterbitkan.</p>
+                        </div>
+                        <div class="flex items-start gap-3 bg-amber-50/50 p-3 rounded-lg border border-amber-100">
+                            <div class="mt-0.5 w-4 h-4 rounded-full bg-amber-500 shadow-sm shrink-0"></div>
+                            <p><strong class="text-amber-700 block mb-1">Dalam Proses</strong> Usulan pensiun Anda sedang diverifikasi atau dalam tahapan evaluasi instansi terkait.</p>
+                        </div>
+                        <div class="flex items-start gap-3 bg-rose-50/50 p-3 rounded-lg border border-rose-100">
+                            <div class="mt-0.5 w-4 h-4 rounded-full bg-rose-500 shadow-sm shrink-0"></div>
+                            <p><strong class="text-rose-700 block mb-1">Tidak Lengkap / Tolak</strong> Terdapat kekurangan berkas pendukung. Silakan baca "Keterangan / Catatan" untuk detailnya.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Modal Footer -->
+                <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex justify-end">
+                    <button onclick="toggleModal('guideModal')" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-medium py-2 px-6 rounded-lg transition shadow-sm">Tutup Panduan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =================================================================
+        // GANTI URL DI BAWAH DENGAN URL DEPLOY (WEB APP) SCRIPT ANDA
+        // =================================================================
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz4fGHfv0k8AaS4fr4u5BM_IqdJTJ23E-9obFJ0jqi1A2vJQf2K-2rP1Vrff5XfHnZC/exec';
+
+        // --- 2. DOM ELEMENTS ---
+        const inputNip = document.getElementById('searchNip');
+        const stateEmpty = document.getElementById('state-empty');
+        const stateLoading = document.getElementById('state-loading');
+        const stateResult = document.getElementById('state-result');
+        const stateNotFound = document.getElementById('state-notfound');
+
+        // --- 3. UI FUNCTIONS ---
+        function switchState(stateId) {
+            // Sembunyikan semua state
+            [stateEmpty, stateLoading, stateResult, stateNotFound].forEach(el => {
+                el.classList.add('hidden');
+                el.classList.remove('fade-in');
+            });
+            // Tampilkan state yang diminta dengan animasi
+            const target = document.getElementById(stateId);
+            target.classList.remove('hidden');
+            // Sedikit delay untuk force reflow animasi CSS
+            void target.offsetWidth; 
+            target.classList.add('fade-in');
+        }
+
+        function resetSearch() {
+            inputNip.value = '';
+            inputNip.focus();
+            switchState('state-empty');
+        }
+
+        function fillNip(nip) {
+            inputNip.value = nip;
+            // trigger submit form otomatis
+            document.getElementById('searchForm').dispatchEvent(new Event('submit'));
+        }
+
+        function getStatusStyling(status) {
+            const s = status.toUpperCase();
+            let style = { icon: 'fa-circle-info', colors: 'bg-white text-green-700 border-white/50 shadow-md' };
+            
+            if (s.includes("SELESAI") || s.includes("TERBIT")) {
+                style = { icon: 'fa-circle-check', colors: 'bg-emerald-500 text-white border-emerald-400 shadow-md' };
+            } else if (s.includes("PROSES")) {
+                style = { icon: 'fa-spinner fa-spin-pulse', colors: 'bg-amber-400 text-amber-900 border-amber-300 shadow-md' };
+            } else if (s.includes("TIDAK LENGKAP") || s.includes("TOLAK") || s.includes("KURANG")) {
+                style = { icon: 'fa-circle-exclamation', colors: 'bg-rose-500 text-white border-rose-400 shadow-md' };
+            }
+            return style;
+        }
+
+        // Helper untuk mendapatkan inisial nama secara otomatis (Mengabaikan Gelar)
+        function getInitials(name) {
+            if (!name || name === '-') return '-';
+            // Hapus gelar di depan (Contoh: Dr., Drs., Dra., H., dll)
+            let cleanName = name.replace(/^(Dr\.|Drs\.|Dra\.|Ir\.|H\.|Hj\.|Prof\.)\s+/ig, '').trim();
+            // Ambil bagian sebelum koma (Menghapus gelar di belakang seperti S.Kom)
+            cleanName = cleanName.split(',')[0].trim();
+            
+            let words = cleanName.split(/\s+/);
+            let initials = "";
+            if (words.length > 0) initials += words[0].substring(0, 1).toUpperCase();
+            if (words.length > 1) initials += words[1].substring(0, 1).toUpperCase();
+            
+            return initials || '-';
+        }
+
+        // --- 4. CORE SEARCH LOGIC ---
+        function handleSearch(event) {
+            event.preventDefault(); // Mencegah reload halaman
+            const nipToSearch = inputNip.value.trim();
+            
+            if (nipToSearch === '') {
+                switchState('state-empty');
+                return;
+            }
+
+            // Tampilkan loading
+            switchState('state-loading');
+
+            // Cek apakah script berjalan di dalam environment Google Apps Script
+            const isGasEnvironment = (typeof google !== 'undefined' && google.script && google.script.run);
+
+            if (isGasEnvironment) {
+                // ==========================================
+                // JIKA DI GOOGLE APPS SCRIPT: Panggil fungsi backend
+                // ==========================================
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        if (result) {
+                            renderResult(result, result.JENIS_SHEET);
+                        } else {
+                            showNotFound(nipToSearch);
+                        }
+                    })
+                    .withFailureHandler(function(error) {
+                        alert("Terjadi kesalahan saat mengambil data: " + error);
+                        switchState('state-empty');
+                    })
+                    .cariDataNIP(nipToSearch);
+            } else {
+                // ==========================================
+                // JIKA DI WEBSITE EKSTERNAL (Menggunakan SCRIPT_URL)
+                // ==========================================
+                if (!SCRIPT_URL || SCRIPT_URL.includes('AKfycb...')) {
+                    alert("PENTING: Anda harus mengganti SCRIPT_URL dengan URL Deploy Google Script Anda terlebih dahulu!");
+                    switchState('state-empty');
+                    return;
+                }
+
+                // Melakukan request API (Fetch) ke URL Web App Google Script
+                fetch(SCRIPT_URL + '?nip=' + encodeURIComponent(nipToSearch))
+                    .then(response => {
+                        if (!response.ok) throw new Error('Jaringan bermasalah');
+                        return response.json();
+                    })
+                    .then(result => {
+                        // Jika JSON tidak null dan memiliki NIP, berarti data ditemukan
+                        if (result && result.NIP) {
+                            renderResult(result, result.JENIS_SHEET);
+                        } else {
+                            showNotFound(nipToSearch);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Fetch Error:', error);
+                        alert("Gagal terhubung ke database. Pastikan SCRIPT_URL benar dan Web App disetting 'Siapa Saja (Anyone)'.");
+                        switchState('state-empty');
+                    });
+            }
+        }
+
+        function showNotFound(nip) {
+            document.getElementById('nf-nip').textContent = nip;
+            switchState('state-notfound');
+        }
+
+        function renderResult(data, sheetName) {
+            // Map data ke DOM
+            const namaLengkap = data['NAMA'] || '-';
+            document.getElementById('res-nama').textContent = namaLengkap;
+            document.getElementById('res-inisial').textContent = getInitials(namaLengkap);
+            
+            document.getElementById('res-nip').textContent = data['NIP'] || '-';
+            document.getElementById('res-pangkat').textContent = data['PANGKAT/GOLONGAN'] || '-';
+            document.getElementById('res-jabatan').textContent = data['JABATAN'] || '-';
+            document.getElementById('res-unit').textContent = data['UNIT KERJA'] || '-';
+            
+            // Keterangan khusus
+            const ketEl = document.getElementById('res-ket');
+            ketEl.innerHTML = data['KETERANGAN'] 
+                ? data['KETERANGAN'].replace(/\n/g, '<br>') // Support multiline dari spreadsheet
+                : '<span class="text-slate-400 italic">Tidak ada keterangan</span>';
+
+            // Jenis Pensiun (Diambil dari nama sheet atau kolom jika ada)
+            const jenisEl = document.getElementById('res-jenis');
+            jenisEl.innerHTML = `<i class="fas fa-file-lines mr-1.5"></i> Usulan: ${sheetName}`;
+
+            // Styling Status Dokumen
+            const statusRaw = data['STATUS DOKUMEN'] || 'TIDAK DIKETAHUI';
+            const badgeEl = document.getElementById('res-status-badge');
+            const styling = getStatusStyling(statusRaw);
+            
+            // Hapus class warna sebelumnya, tambahkan yang baru
+            badgeEl.className = `px-4 py-1.5 sm:px-5 sm:py-2 inline-flex items-center gap-2 text-xs sm:text-sm font-bold rounded-xl border ${styling.colors}`;
+            badgeEl.innerHTML = `<i class="fas ${styling.icon}"></i> <span class="uppercase tracking-wide">${statusRaw}</span>`;
+
+            switchState('state-result');
+        }
+
+        // --- 5. MODAL & UTILS LOGIC ---
+        function toggleModal(modalID) {
+            const modal = document.getElementById(modalID);
+            if(modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex'); // Pakai flex agar center
+            } else {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        // Tutup modal jika klik di luar box putih
+        document.getElementById('guideModal').addEventListener('click', function() {
+            toggleModal('guideModal');
+        });
+    </script>
+</body>
+</html>
